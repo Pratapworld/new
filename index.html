@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quiz App</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 40px;
+      max-width: 640px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+
+    /* --- Start screen --- */
+    #start-screen { text-align: center; }
+    #start-screen h1 { font-size: 2rem; color: #333; margin-bottom: 10px; }
+    #start-screen p  { color: #666; margin-bottom: 30px; font-size: 1rem; }
+
+    /* --- Quiz screen --- */
+    #progress-bar-wrap {
+      background: #eee;
+      border-radius: 99px;
+      height: 8px;
+      margin-bottom: 24px;
+    }
+    #progress-bar {
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      height: 100%;
+      border-radius: 99px;
+      transition: width 0.4s ease;
+    }
+    #question-count { color: #999; font-size: 0.85rem; margin-bottom: 8px; }
+    #question-text  { font-size: 1.25rem; font-weight: 600; color: #222; margin-bottom: 24px; line-height: 1.5; }
+
+    .options { display: grid; gap: 12px; }
+    .option {
+      padding: 14px 18px;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 1rem;
+      color: #333;
+      background: #fff;
+      text-align: left;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .option:hover:not(:disabled) { border-color: #764ba2; background: #f5f0ff; }
+    .option.correct  { border-color: #22c55e; background: #f0fdf4; color: #166534; }
+    .option.wrong    { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
+    .option:disabled { cursor: default; }
+
+    #feedback {
+      margin-top: 16px;
+      font-size: 0.95rem;
+      font-weight: 500;
+      min-height: 22px;
+    }
+    #feedback.correct { color: #16a34a; }
+    #feedback.wrong   { color: #dc2626; }
+
+    /* --- Result screen --- */
+    #result-screen { text-align: center; }
+    .score-circle {
+      width: 130px; height: 130px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      margin: 0 auto 24px;
+      color: #fff;
+    }
+    .score-circle .num  { font-size: 2.5rem; font-weight: 700; line-height: 1; }
+    .score-circle .deno { font-size: 1rem; opacity: 0.85; }
+    #result-screen h2 { font-size: 1.6rem; color: #222; margin-bottom: 8px; }
+    #result-msg       { color: #555; margin-bottom: 28px; font-size: 1rem; }
+
+    /* --- Buttons --- */
+    .btn {
+      display: inline-block;
+      padding: 13px 32px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: #fff;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn:hover  { opacity: 0.9; transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+
+    #next-btn { margin-top: 20px; display: none; }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+<div class="card">
+
+  <!-- Start -->
+  <div id="start-screen">
+    <h1>General Knowledge Quiz</h1>
+    <p>10 questions &bull; Pick the correct answer &bull; See your score at the end</p>
+    <button class="btn" onclick="startQuiz()">Start Quiz</button>
+  </div>
+
+  <!-- Quiz -->
+  <div id="quiz-screen" class="hidden">
+    <div id="progress-bar-wrap"><div id="progress-bar"></div></div>
+    <div id="question-count"></div>
+    <div id="question-text"></div>
+    <div class="options" id="options"></div>
+    <div id="feedback"></div>
+    <button class="btn" id="next-btn" onclick="nextQuestion()">Next &rarr;</button>
+  </div>
+
+  <!-- Result -->
+  <div id="result-screen" class="hidden">
+    <div class="score-circle">
+      <span class="num" id="score-num"></span>
+      <span class="deno" id="score-deno"></span>
+    </div>
+    <h2 id="result-screen-title"></h2>
+    <p id="result-msg"></p>
+    <button class="btn" onclick="restartQuiz()">Play Again</button>
+  </div>
+
+</div>
+
+<script>
+  const questions = [
+    {
+      q: "What is the capital of France?",
+      options: ["Berlin", "Madrid", "Paris", "Rome"],
+      answer: 2
+    },
+    {
+      q: "Which planet is known as the Red Planet?",
+      options: ["Venus", "Mars", "Jupiter", "Saturn"],
+      answer: 1
+    },
+    {
+      q: "How many sides does a hexagon have?",
+      options: ["5", "6", "7", "8"],
+      answer: 1
+    },
+    {
+      q: "Who wrote the play 'Romeo and Juliet'?",
+      options: ["Charles Dickens", "Mark Twain", "William Shakespeare", "Jane Austen"],
+      answer: 2
+    },
+    {
+      q: "What is the largest ocean on Earth?",
+      options: ["Atlantic", "Indian", "Arctic", "Pacific"],
+      answer: 3
+    },
+    {
+      q: "Which element has the chemical symbol 'O'?",
+      options: ["Gold", "Osmium", "Oxygen", "Oganesson"],
+      answer: 2
+    },
+    {
+      q: "In which year did the first humans land on the Moon?",
+      options: ["1965", "1969", "1972", "1975"],
+      answer: 1
+    },
+    {
+      q: "What is the smallest country in the world?",
+      options: ["Monaco", "San Marino", "Liechtenstein", "Vatican City"],
+      answer: 3
+    },
+    {
+      q: "Which programming language is known as the 'language of the web'?",
+      options: ["Python", "Java", "JavaScript", "C++"],
+      answer: 2
+    },
+    {
+      q: "How many bones are in the adult human body?",
+      options: ["196", "206", "216", "226"],
+      answer: 1
+    }
+  ];
+
+  let current = 0;
+  let score = 0;
+  let answered = false;
+
+  function startQuiz() {
+    current = 0;
+    score = 0;
+    show('quiz-screen');
+    renderQuestion();
+  }
+
+  function renderQuestion() {
+    answered = false;
+    const q = questions[current];
+    const total = questions.length;
+
+    document.getElementById('progress-bar').style.width = ((current / total) * 100) + '%';
+    document.getElementById('question-count').textContent = `Question ${current + 1} of ${total}`;
+    document.getElementById('question-text').textContent = q.q;
+    document.getElementById('feedback').textContent = '';
+    document.getElementById('feedback').className = '';
+    document.getElementById('next-btn').style.display = 'none';
+
+    const container = document.getElementById('options');
+    container.innerHTML = '';
+    q.options.forEach((opt, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'option';
+      btn.textContent = opt;
+      btn.onclick = () => selectAnswer(i);
+      container.appendChild(btn);
+    });
+  }
+
+  function selectAnswer(chosen) {
+    if (answered) return;
+    answered = true;
+
+    const q = questions[current];
+    const buttons = document.querySelectorAll('.option');
+    const feedback = document.getElementById('feedback');
+
+    buttons.forEach(b => b.disabled = true);
+    buttons[q.answer].classList.add('correct');
+
+    if (chosen === q.answer) {
+      score++;
+      feedback.textContent = 'Correct!';
+      feedback.className = 'correct';
+    } else {
+      buttons[chosen].classList.add('wrong');
+      feedback.textContent = `Wrong — the answer is "${q.options[q.answer]}"`;
+      feedback.className = 'wrong';
+    }
+
+    document.getElementById('next-btn').style.display = 'inline-block';
+  }
+
+  function nextQuestion() {
+    current++;
+    if (current < questions.length) {
+      renderQuestion();
+    } else {
+      showResult();
+    }
+  }
+
+  function showResult() {
+    show('result-screen');
+    const total = questions.length;
+    document.getElementById('score-num').textContent = score;
+    document.getElementById('score-deno').textContent = `/ ${total}`;
+
+    let title, msg;
+    const pct = score / total;
+    if (pct === 1)        { title = 'Perfect Score!';   msg = 'Outstanding — you got every question right!'; }
+    else if (pct >= 0.8)  { title = 'Great Job!';       msg = 'Almost perfect — excellent knowledge!'; }
+    else if (pct >= 0.6)  { title = 'Good Effort!';     msg = 'Solid result — keep practising!'; }
+    else if (pct >= 0.4)  { title = 'Keep Trying!';     msg = 'Not bad — review the topics and go again.'; }
+    else                  { title = 'Better Luck Next Time!'; msg = 'Looks like you need a bit more study. You can do it!'; }
+
+    document.getElementById('result-screen-title').textContent = title;
+    document.getElementById('result-msg').textContent = msg;
+    document.getElementById('progress-bar').style.width = '100%';
+  }
+
+  function restartQuiz() {
+    show('start-screen');
+  }
+
+  function show(id) {
+    ['start-screen', 'quiz-screen', 'result-screen'].forEach(s => {
+      document.getElementById(s).classList.toggle('hidden', s !== id);
+    });
+  }
+</script>
+</body>
+</html>
